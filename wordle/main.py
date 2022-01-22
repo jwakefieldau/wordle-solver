@@ -143,6 +143,40 @@ class WordleSolver(object):
         self.game_word_score_tup_l = new_game_word_score_tup_l
 
 
+    # add constraints in the form of a string, a bit more convenient
+    # than separate function calls for interaction
+    def feedback(self, s):
+        # 0,c,{Gy,Ye,Gn}|...n,c,{Gy,Ye,Gn}
+        # Gy - grey
+        # Ye - yellow
+        # Gn - green
+
+        # do greens first, then yellows, then grey
+        # greens must be done before greys, because we 
+        # can get a green and a grey on the same letter
+        # (repeated), and the order matters
+        green_ops = list()
+        yellow_ops = list()
+        grey_ops = list()
+        op_list = s.split('|')
+        for op_s in op_list:
+            (i, c, colour,) = op_s.split(',')
+            if colour == 'Gn':
+                green_ops.append((int(i), c,))
+            elif colour == 'Ye':
+                yellow_ops.append((int(i), c,))
+            elif colour == 'Gy':
+                grey_ops.append((int(i), c,)) 
+
+        for (i, c,) in green_ops:
+            self.add_green(i, c)
+        for (i, c,) in yellow_ops:
+            self.add_yellow(i, c)
+        for (i, c,) in grey_ops:
+            self.add_grey(i, c)
+
+
+
     # return the top scoring available word, score tuple
     def guess(self):
         return self.game_word_score_tup_l[0]
