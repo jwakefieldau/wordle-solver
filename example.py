@@ -6,8 +6,8 @@ def do_example():
     # mares
     ws.feedback('0,m,Ye|1,a,Gy|2,r,Ye|3,e,Gy|4,s,Gy')
     print(ws.guess())
-    # roomy
-    ws.feedback('0,r,Ye|1,o,Gy|2,o,Gy|3,m,Gn|4,y,Gy')
+    # grimy
+    ws.feedback('0,g,Gy|1,r,Gn|2,i,Gn|3,m,Gn|4,y,Gy')
     print(ws.guess())
     # crimp - correct
 

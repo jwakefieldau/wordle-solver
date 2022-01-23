@@ -1,10 +1,12 @@
+import math
+
 from string import ascii_lowercase
 
 MIN_WORD_LEN = 2
 
 class WordleSolver(object):
 
-    def __init__(self, dict_file_path, word_len):
+    def __init__(self, dict_file_path, word_len=5):
         if word_len < MIN_WORD_LEN:
             raise ValueError(f'minimum word_len == {MIN_WORD_LEN}')
         else:
@@ -99,7 +101,36 @@ class WordleSolver(object):
             word_score_tup_l.append((word, score,))
 
         # created a set of words sorted by score, descending
-        self.word_score_tup_l = sorted(word_score_tup_l, key=lambda i: i[1], reverse=True)
+        # always score words with repeated letters lower than those
+        # without.
+        # words with repeated letters always sort as if scored less than 1,
+        # and maintain relative ordering.
+        # if every digram in a word was in every word..
+        num_digrams = (self.word_len - 1)
+        max_possible_score = num_digrams * len(self.word_list)
+
+        # words with repeats get divided by repeats_quotient
+        repeats_exp = int(math.log(max_possible_score, 10)) + 1
+        repeats_quotient = 10 ** repeats_exp
+
+        def key_func(tup):
+            (word, score,) = tup
+            c_set = set()
+            repeats = False
+            ret_score = None
+            for c in word:
+                if c in c_set:
+                    repeats = True
+                    break
+                else:
+                    c_set.add(c)
+            if repeats:
+                ret_score = score / repeats_quotient
+            else:
+                ret_score = score
+            return ret_score
+
+        self.word_score_tup_l = sorted(word_score_tup_l, key=key_func, reverse=True)
 
 
     def reset_game(self):
@@ -176,7 +207,6 @@ class WordleSolver(object):
             self.add_grey(i, c)
 
 
-
-    # return the top scoring available word, score tuple
-    def guess(self):
-        return self.game_word_score_tup_l[0]
+    # return the top scoring available word, score tuples
+    def guess(self, top_n=1):
+        return self.game_word_score_tup_l[0:top_n]
