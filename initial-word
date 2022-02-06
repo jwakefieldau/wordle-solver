@@ -1,0 +1,6 @@
+computing the initial word is a bit costly with the "best average set reduction" method, so here
+it is:
+
+truly
+
+This isn't used by the code yet, though it could be

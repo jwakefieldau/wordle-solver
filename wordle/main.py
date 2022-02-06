@@ -18,10 +18,6 @@ class WordleSolver(object):
         self.word_list = list()
 
         self._load_dict()
-        self._init_analysis()
-        self._dict_analysis_stats()
-        self._word_scores()
-
         self.reset_game()
 
     # load dictionary, filter for length
@@ -45,133 +41,45 @@ class WordleSolver(object):
                         self.word_list.append(word)
 
 
-    # initialise all the analysis data structures
-    def _init_analysis(self):
-
-        # in how many words does digram dg appear at position i?
-        self.digram_pos_freq_ld = [dict()] * self.word_len
-        for i in range(self.word_len - 1):
-            self.digram_pos_freq_ld[i] = dict()
-            for c1 in ascii_lowercase:
-                for c2 in ascii_lowercase:
-                    dg = f'{c1}{c2}'
-                    self.digram_pos_freq_ld[i][dg] = 0
-        
-
-    #NOTE - what should determine highest scoring word?
-    # we either want to guess the exact word, or make a guess
-    # that elicits the most useful feedback.
-    # if we guess a word that has the most likely letters and digrams
-    # at each position, we are more likely to get useful feedback
-
-    # freq analyse letters at each position, maybe digrams too?
-    # freq analyse counts of letters in word, eg: letter 'e' appears
-    # x times in y words, same with digrams
-    def _dict_analysis_stats(self):
-        for word in self.word_list:
-            for (i, c,) in enumerate(word):
-
-                # digram frequency at position
-                if i < (len(word) - 1):
-                    dg = word[i:i+2]
-                    self.digram_pos_freq_ld[i][dg] += 1
-
-
-    def _word_scores(self):
-        # use sorted frequency stats to score each word and then sort the
-        # list by score
-        sorted_digram_pos_freq = [ [None] * (26 ** 2) ] * (self.word_len - 1)
-        for i in range(self.word_len - 1):
-            sorted_digram_pos_freq[i] = sorted(self.digram_pos_freq_ld[i].items(), key=lambda i: i[1], reverse=True)
-
-        word_score_tup_l = list()
-        for word in self.word_list:
-            score = 0
-            for i in range(len(word) - 1):
-                dg = word[i:i+2]
-                # lowest index is top score
-                found_dg = False
-                for (cur_dg, cur_dg_freq,) in sorted_digram_pos_freq[i]:
-                    if cur_dg == dg:
-                        found_dg = True
-                        break
-                if not found_dg:
-                    raise ValueError(f'unable to find digram {dg} in sorted frequency list at position {i}')
-                score += cur_dg_freq
-            word_score_tup_l.append((word, score,))
-
-        # created a set of words sorted by score, descending
-        # always score words with repeated letters lower than those
-        # without.
-        # words with repeated letters always sort as if scored less than 1,
-        # and maintain relative ordering.
-        # if every digram in a word was in every word..
-        num_digrams = (self.word_len - 1)
-        max_possible_score = num_digrams * len(self.word_list)
-
-        # words with repeats get divided by repeats_quotient
-        repeats_exp = int(math.log(max_possible_score, 10)) + 1
-        repeats_quotient = 10 ** repeats_exp
-
-        def key_func(tup):
-            (word, score,) = tup
-            c_set = set()
-            repeats = False
-            ret_score = None
-            for c in word:
-                if c in c_set:
-                    repeats = True
-                    break
-                else:
-                    c_set.add(c)
-            if repeats:
-                ret_score = score / repeats_quotient
-            else:
-                ret_score = score
-            return ret_score
-
-        self.word_score_tup_l = sorted(word_score_tup_l, key=key_func, reverse=True)
-
-
     def reset_game(self):
-        self.game_word_score_tup_l = list(self.word_score_tup_l)
+        self.game_word_list = list(self.word_list)
         self.green_letter_set = set()
 
 
     # c must be present at position i, prune any words
     # that have any other letter there
     def add_green(self, i, c):
-        new_game_word_score_tup_l = list()
+        new_game_word_list = list()
         # keep a set of these letters so we know what to do
         # if we get a grey on it later
         self.green_letter_set.add(c)
-        for (word, score,) in self.game_word_score_tup_l:
+        for word in self.game_word_list:
             if word[i] == c:
-                new_game_word_score_tup_l.append((word, score,))
-        self.game_word_score_tup_l = new_game_word_score_tup_l
+                new_game_word_list.append(word)
+        self.game_word_list = new_game_word_list
 
     
     # c must be present, but NOT at position i, prune
     # any words that have c at position i, and any words
     # that do not have c at all
     def add_yellow(self, i, c):
-        new_game_word_score_tup_l = list()
-        for (word, score,) in self.game_word_score_tup_l:
+        new_game_word_list = list()
+        for word in self.game_word_list:
             if c in word and word[i] != c:
-                new_game_word_score_tup_l.append((word, score,))
-        self.game_word_score_tup_l = new_game_word_score_tup_l
+                new_game_word_list.append(word)
+        self.game_word_list = new_game_word_list
 
 
     # c is either not present at all, prune any words that contain c - OR -
     # c is already green somewhere, and not also present at i
     def add_grey(self, i, c):
-        new_game_word_score_tup_l = list()
-        for (word, score,) in self.game_word_score_tup_l:
+        new_game_word_list = list()
+        for word in self.game_word_list:
             if c not in word:
-                new_game_word_score_tup_l.append((word, score,))
+                new_game_word_list.append(word)
             elif c in self.green_letter_set and word[i] != c:
-                new_game_word_score_tup_l.append((word, score,))
-        self.game_word_score_tup_l = new_game_word_score_tup_l
+                new_game_word_list.append(word)
+        self.game_word_list = new_game_word_list
 
 
     # add constraints in the form of a string, a bit more convenient
@@ -207,6 +115,51 @@ class WordleSolver(object):
             self.add_grey(i, c)
 
 
-    # return the top scoring available word, score tuples
-    def guess(self, top_n=1):
-        return self.game_word_score_tup_l[0:top_n]
+    def guess(self):
+        # for each word in the game word set, figure out how 
+        # much smaller the game word set gets if the solution 
+        # was each other word, then rank each word by the average
+        # change in word set, and return the one with the highest
+        # average
+        word_score_d = dict()
+        for cur_score_word in self.game_word_list:
+            cur_score_sum = 0
+            for cur_constr_word in self.game_word_list:
+                green_char_set = set()
+                green_ops = list()
+                yellow_ops = list()
+                grey_ops = list()
+                # do greens first
+                for (i, inner_c,) in enumerate(cur_constr_word):
+                    if inner_c == cur_score_word[i]:
+                        green_ops.append((i, inner_c,))
+                        green_char_set.add(inner_c)
+                # now yellow and grey
+                for (i, inner_c,) in enumerate(cur_constr_word):
+                    if inner_c not in cur_score_word or (inner_c in green_char_set and inner_c != cur_score_word[i]):
+                        grey_ops.append((i, inner_c,))
+                    elif inner_c in cur_score_word:
+                        yellow_ops.append((i, inner_c,))
+                # now, with our constraints, go through all the words and see how many
+                # words match them, this tell us how many words the game list would 
+                # shrink by for cur_score_word if cur_constr_word were the solution 
+                cur_guess_reduc_list = list()
+                for cur_guess_word in self.game_word_list:
+                    match_guess = True
+                    for (green_i, green_c,) in green_ops:
+                        if cur_guess_word[green_i] != green_c:
+                            match_guess = False
+                    for (yellow_i, yellow_c,) in yellow_ops:
+                        if yellow_c not in cur_guess_word:
+                            match_guess = False
+                    for (grey_i, grey_c,) in grey_ops:
+                        if grey_c not in green_char_set and grey_c in cur_guess_word:
+                            match_guess = False
+                    if match_guess:
+                        cur_guess_reduc_list.append(cur_guess_word)
+                cur_score_sum += len(self.game_word_list) - len(cur_guess_reduc_list)
+            word_score_d[cur_score_word] = float(cur_score_sum / len(self.game_word_list))
+        sorted_word_score_items_tl = sorted(word_score_d.items(), key=lambda i: i[1], reverse=True)
+        guess_tup = sorted_word_score_items_tl[0]
+
+        return guess_tup
